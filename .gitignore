@@ -1,0 +1,4 @@
+#Virtualenv
+virtualenv_run
+trafficData
+.tox
