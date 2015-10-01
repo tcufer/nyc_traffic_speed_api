@@ -1,4 +1,8 @@
 #Virtualenv
-virtualenv_run
+venv
 trafficData
+data_sample
 .tox
+*.pyc
+*.log
+secret.json
