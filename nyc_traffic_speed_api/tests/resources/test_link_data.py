@@ -11,14 +11,14 @@ class TestLinkDataResource(unittest.TestCase):
 	def test_get(self):
 		link_data = LinkDataResource()
 		response = LinkDataResource.get(link_data, 4329499)
-		self.assertEqual(200, response[1])
+		self.assertEqual(200, response.status_code)
 
 class TestLinkDataListResource(unittest.TestCase):
 
 	def test_get(self):
 		link_data_list = LinkDataListResource()
 		response = LinkDataListResource.get(link_data_list)
-		self.assertEqual(200, response[1])
+		self.assertEqual(200, response.status_code)
 
 if __name__ == '__main__':
     unittest.main()

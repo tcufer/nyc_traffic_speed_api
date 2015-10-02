@@ -4,6 +4,7 @@ from datetime import datetime as dt
 from bson import json_util
 from common import send_email
 from flask.ext.restful import Resource
+from werkzeug import Response
 
 # establish a connection to the database
 connection = pymongo.MongoClient("mongodb://localhost")
@@ -36,11 +37,12 @@ class LinkDataResource(Resource):
 														"encodedPolyLine": True, 
 														"encodedPolyLineLvls": True}).sort("dataAsOf", -1).limit(1)
 		
-		except Exception as e:
+		except pymongo.errors, e:
 			print "Unexpected error: ", type(e), e	
 			# return status code
 
-		return json_util.dumps(doc), 200
+		resp = Response(json_util.dumps(doc), status=200, mimetype='application/json')
+		return resp
 
 class LinkDataListResource(Resource):
 
@@ -63,8 +65,9 @@ class LinkDataListResource(Resource):
 												        "encodedPolyLineLvls": {"$first": "$encodedPolyLineLvls"}
 												    }}
 												])
-		except Exception as e:
+		except pymongo.errors, e:
 			print "Unexpected error: ", type(e), e	
 
 
-		return json.dumps(documents['result'], default=json_util.default), 200
+		resp = Response(json_util.dumps(documents['result']), status=200, mimetype='application/json')
+		return resp

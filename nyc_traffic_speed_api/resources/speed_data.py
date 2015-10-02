@@ -4,6 +4,7 @@ from datetime import datetime as dt
 from bson import json_util
 from common import send_email
 from flask.ext.restful import Resource
+from werkzeug import Response
 
 # establish a connection to the database
 connection = pymongo.MongoClient("mongodb://localhost")
@@ -28,18 +29,18 @@ class SpeedDataResource(Resource):
 
 		try:
 			doc = sensordata.find({"sensorId": str(id)}, { 	"_id": False,
-															"sensorId": True,
+															'sensorId': True,
 														   	"dataAsOf": True,
 														   	"speed": True,
 														   	"travelTime": True,
 														   	"linkName": True,
 														   	"borough": True}).sort("dataAsOf", -1).limit(1)
 		
-		except Exception as e:
-			print "Unexpected error: ", type(e), e	
+		except pymongo.errors, e:
+			return "Unexpected error: ", e	
 			# return status code
-
-		return json_util.dumps(doc), 200
+		resp = Response(json_util.dumps(doc), status=200, mimetype='application/json')
+		return resp
 
 
 
@@ -62,8 +63,8 @@ class SpeedDataListResource(Resource):
 												        "borough": {"$first": "$borough"}
 												    }}
 												])
-		except Exception as e:
+		except pymongo.errors, e:
 			print "Unexpected error: ", type(e), e	
 
-
-		return json.dumps(documents['result'], default=json_util.default), 200			
+		resp = Response(json_util.dumps(documents['result']), status=200, mimetype='application/json')
+		return resp		
