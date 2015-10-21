@@ -1,13 +1,9 @@
 import requests, csv, pymongo, sys, json, logging
-from flask import jsonify
-from datetime import datetime as dt
+from flask import jsonify, abort
 from bson import json_util
 from common import send_email
 from flask.ext.restful import Resource
-from werkzeug import Response
-
-# establish a connection to the database
-connection = pymongo.MongoClient("mongodb://localhost")
+from nyc_traffic_speed_api import api, db_conn
 
 
 logging.basicConfig(level=logging.INFO)
@@ -18,14 +14,14 @@ hdlr.setFormatter(formatter)
 logger.addHandler(hdlr) 
 # logger.setLevel(logging.WARNING)
 
-	
-class SpeedDataResource(Resource):
+@api.route('/speedData/<int:id>')	
+class SpeedSensorResource(Resource):
 
 	def get(self, id):
-		
+
 		# get a handle to the nyc_traffic_speed database
-		db=connection.nyc_traffic_speed
-		sensordata = db.sensordata
+		# db=connection.nyc_traffic_speed
+		sensordata = db_conn.sensordata
 
 		try:
 			doc = sensordata.find({"sensorId": str(id)}, { 	"_id": False,
@@ -39,18 +35,20 @@ class SpeedDataResource(Resource):
 		except pymongo.errors, e:
 			return "Unexpected error: ", e	
 			# return status code
-		resp = Response(json_util.dumps(doc), status=200, mimetype='application/json')
-		return resp
+		speed_sensor = [sensor for sensor in doc]
+		if len(speed_sensor) == 0:
+			abort(404)
+		return jsonify({'speedSensor': speed_sensor})
 
 
-
-class SpeedDataListResource(Resource):
+@api.route('/speedData')	
+class SpeedSensorsListResource(Resource):
 
 	def get(self):
 
 		# get a handle to the nyc_traffic_speed database
-		db=connection.nyc_traffic_speed
-		sensordata = db.sensordata
+		# db=connection.nyc_traffic_speed
+		sensordata = db_conn.sensordata
 
 		try:
 			documents = sensordata.aggregate([
@@ -64,7 +62,11 @@ class SpeedDataListResource(Resource):
 												    }}
 												])
 		except pymongo.errors, e:
-			print "Unexpected error: ", type(e), e	
+			print "Unexpected error: ", e	
 
-		resp = Response(json_util.dumps(documents['result']), status=200, mimetype='application/json')
-		return resp		
+		speed_sensors_list = [point for point in documents['result']]
+		if len(speed_sensors_list) == 0:
+			abort(404)
+		
+		return jsonify({'speedSensors': speed_sensors_list})
+

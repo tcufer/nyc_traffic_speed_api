@@ -1,13 +1,9 @@
 import requests, csv, pymongo, sys, json, logging
-from flask import jsonify
-from datetime import datetime as dt
+from flask import jsonify, abort
 from bson import json_util
 from common import send_email
 from flask.ext.restful import Resource
-from werkzeug import Response
-
-# establish a connection to the database
-connection = pymongo.MongoClient("mongodb://localhost")
+from nyc_traffic_speed_api import api, db_conn
 
 
 logging.basicConfig(level=logging.INFO)
@@ -19,13 +15,12 @@ logger.addHandler(hdlr)
 # logger.setLevel(logging.WARNING)
 
 
+@api.route('/linkData/<int:id>')	
 class LinkDataResource(Resource):
 
 	def get(self, id):
 
-		# get a handle to the nyc_traffic_speed database
-		db=connection.nyc_traffic_speed
-		sensordata = db.sensordata
+		sensordata = db_conn.sensordata
 
 		try:
 			doc = sensordata.find({"linkId": str(id)}, { "_id":False, 
@@ -38,19 +33,21 @@ class LinkDataResource(Resource):
 														"encodedPolyLineLvls": True}).sort("dataAsOf", -1).limit(1)
 		
 		except pymongo.errors, e:
-			print "Unexpected error: ", type(e), e	
-			# return status code
+			print "Unexpected error: ", e
 
-		resp = Response(json_util.dumps(doc), status=200, mimetype='application/json')
-		return resp
 
+		link_data = [link for link in doc]
+		if len(link_data) == 0:
+			abort(404)
+		return jsonify({'linkData': link_data})
+
+
+@api.route('/linkData')
 class LinkDataListResource(Resource):
 
-	def get(self):
+	def get(self):	
 
-		# get a handle to the nyc_traffic_speed database
-		db=connection.nyc_traffic_speed
-		sensordata = db.sensordata
+		sensordata = db_conn.sensordata
 
 		try:
 			documents = sensordata.aggregate([
@@ -66,8 +63,11 @@ class LinkDataListResource(Resource):
 												    }}
 												])
 		except pymongo.errors, e:
-			print "Unexpected error: ", type(e), e	
+			print "Unexpected error: ", e	
 
 
-		resp = Response(json_util.dumps(documents['result']), status=200, mimetype='application/json')
-		return resp
+		links_list = [link for link in documents['result']]
+		if len(links_list) == 0:
+			abort(404)
+		
+		return jsonify({'linksList': links_list})

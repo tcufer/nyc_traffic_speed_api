@@ -1,12 +1,7 @@
 import requests, csv, pymongo, sys, json, logging
 from datetime import datetime as dt
 from bson import json_util
-#from common import send_email
-# from flask.ext.restful import Resource
-
-# establish a connection to the database
-connection = pymongo.MongoClient("mongodb://localhost")
-
+from nyc_traffic_speed_api import app, db_conn
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger('nyc_traffic_speed')
@@ -14,7 +9,6 @@ hdlr = logging.FileHandler('nyc_traffic_speed.log')
 formatter = logging.Formatter('%(asctime)s %(levelname)s %(message)s')
 hdlr.setFormatter(formatter)
 logger.addHandler(hdlr) 
-# logger.setLevel(logging.WARNING)
 
 	
 class DataIngestion():
@@ -22,11 +16,10 @@ class DataIngestion():
 	def exception_handler(ex_message):
 		logger.error(ex_message)
 
+
 	def insert_traffic_data(self, response):
 
-		# get a handle to the nyc_traficc_speed database
-		db=connection.nyc_traffic_speed
-		sensordata = db.sensordata
+		sensordata = db_conn.sensordata
 
 		trafficData = (response).split('\n')
 		# skip first (headers) and last (empty) line		
@@ -45,12 +38,9 @@ class DataIngestion():
 									'owner':line[9], 
 									'borough': line[11], 
 									'linkName': line[12]})
-			except Exception as e:
-				# logger.error("Error when inserting the document: %s %s", type(e), e)
-				msg = "Error when inserting the document: %s %s", type(e), e
+			except pymongo.errors.WriteError as e:
+				msg = "Error when inserting the document: %s ", e
 				exception_handler(msg)
-				return 1
-		# return 0
 
 
 
@@ -63,13 +53,12 @@ class DataIngestion():
 			exception_handler(msg)
 			return {'status': 500}
 
-		if 400 <= response.status_code <= 413:
+		if 400 <= response.status_code < 500:
 			 # logger.error('An error occured, status: %s', response.status_code)
-			 msg = 'An error occured, status: {}'.format(response.status_code)
-			 exception_handler(msg)
-			 return {'status': response.status_code }
+			msg = 'An error occured, status: {}'.format(response.status_code)
+			exception_handler(msg)
+			return {'status': response.status_code }
 
 		logger.info('Data received, status: %s', response.status_code)
-		# return {'status': response.status_code, 'trafficData': response.text}
-		tmp = self.insert_traffic_data(response.text)
-		return tmp
+		self.insert_traffic_data(response.text)
+		
