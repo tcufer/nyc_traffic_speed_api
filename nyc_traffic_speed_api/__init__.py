@@ -8,7 +8,7 @@ api = Api(app)
 
 def mongodb_conn():
 		try:
-			return pymongo.MongoClient("mongodb://127.0.0.1:27017").nyc_traffic_speed
+			return pymongo.MongoClient("mongodb://127.0.0.1:27017").dev_nyc_traffic_speed
 		except pymongo.errors.ConnectionFailure, e:
 			print "Could not connect to server: %s" % e
 

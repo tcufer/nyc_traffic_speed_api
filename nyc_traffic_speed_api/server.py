@@ -4,8 +4,8 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from flask import Flask, make_response, jsonify
 from flask.ext.restful import Api
 from werkzeug import Response
-from resources.speed_data import SpeedSensorResource, SpeedSensorsListResource
-from resources.link_data import LinkDataResource, LinkDataListResource
+from resources.speed_data import TrafficSpeedResource, TrafficSpeedListResource
+from resources.link_data import TrafficLinkResource, TrafficLinkListResource
 from common.data_ingestion import DataIngestion
 from apscheduler.scheduler import Scheduler
 from nyc_traffic_speed_api import app, api

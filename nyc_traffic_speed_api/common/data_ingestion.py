@@ -19,25 +19,26 @@ class DataIngestion():
 
 	def insert_traffic_data(self, response):
 
-		sensordata = db_conn.sensordata
+		sensors = db_conn.sensors
 
 		trafficData = (response).split('\n')
 		# skip first (headers) and last (empty) line		
 		for line in csv.reader(trafficData[1:-1], delimiter="\t"): 
 		# "Id"	"Speed"	"TravelTime"	"Status"	"DataAsOf"	"linkId"	"linkPoints"	"EncodedPolyLine"	"EncodedPolyLineLvls"	"Owner"	"Transcom_id"	"Borough"	"linkName"
 			try:
-				sensordata.insert({	'sensorId': line[0], 
+				sensors.insert({	'sensorId': line[0], 
 									'speed':line[1], 
 									'travelTime':line[2], 
 									'status':	line[3], 
 									'dataAsOf':dt.strptime(line[4], "%m/%d/%Y %H:%M:%S"), 
-									'linkId': line[5], 
-									'linkPoints':line[6], 
-									'encodedPolyLine':line[7], 
-									'encodedPolyLineLvls':line[8],  
-									'owner':line[9], 
-									'borough': line[11], 
-									'linkName': line[12]})
+									'linkId': line[5] 
+									# 'owner':line[9] 
+									# 'linkPoints':line[6], 
+									# 'encodedPolyLine':line[7], 
+									# 'encodedPolyLineLvls':line[8],  
+									# 'borough': line[11], 
+									# 'linkName': line[12]
+								})
 			except pymongo.errors.WriteError as e:
 				msg = "Error when inserting the document: %s ", e
 				exception_handler(msg)
