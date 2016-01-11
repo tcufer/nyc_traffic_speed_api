@@ -26,19 +26,19 @@ pip install -r requirements.txt
 ## Examples
 
 ```
-http://localhost:5000/speedData
+http://localhost:5000/trafficSpeed
 ```
  
 ```
-http://localhost:5000/speedData/<int:id>
+http://localhost:5000/trafficSpeed/<int:id>
 ```
 
 ```
-http://localhost:5000/linkData
+http://localhost:5000/trafficLink
 ```
 
 ```
-http://localhost:5000/linkData/<int:id>
+http://localhost:5000/trafficLink/<int:id>
 ```
 
 ### Sample output (JSON)
