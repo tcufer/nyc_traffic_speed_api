@@ -62,16 +62,16 @@ class TrafficSpeedListResource(Resource):
 		links = db_conn.links
 
 		try:
-			documents = sensors.aggregate([
-			    								{"$sort": { "dataAsOf": -1 }},
-			    								{"$group": { "_id": "$sensorId", 
-												        "dataAsOf": {"$first": "$dataAsOf"},
-												        "speed": {"$first": "$speed" },
-												        "travelTime":{"$first":"$travelTime"},
-												        "linkId": {"$first": "$linkId"},
-												        # "borough": {"$first": "$borough"}
-												    }}
-												])
+			pipeline = [ {"$sort": { "dataAsOf": -1 }},
+				{"$group": { "_id": "$sensorId", 
+				        "dataAsOf": {"$first": "$dataAsOf"},
+				        "speed": {"$first": "$speed" },
+				        "travelTime":{"$first":"$travelTime"},
+				        "linkId": {"$first": "$linkId"}
+				        # "borough": {"$first": "$borough"}
+				    }}
+				]
+			documents = sensors.aggregate( pipeline, allowDiskUse = True)
 		except pymongo.errors, e:
 			print "Unexpected error: ", e	
 
