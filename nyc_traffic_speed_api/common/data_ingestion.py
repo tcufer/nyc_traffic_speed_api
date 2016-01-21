@@ -1,4 +1,4 @@
-import requests, csv, pymongo, sys, json, logging
+import requests, csv, pymongo, sys, json, logging, pytz
 from datetime import datetime as dt
 from bson import json_util
 from nyc_traffic_speed_api import app, db_conn
@@ -21,6 +21,7 @@ class DataIngestion():
 
 		sensors = db_conn.sensors
 
+		localtz = pytz.timezone('America/New_York')
 		trafficData = (response).split('\n')
 		# skip first (headers) and last (empty) line		
 		for line in csv.reader(trafficData[1:-1], delimiter="\t"): 
@@ -30,7 +31,7 @@ class DataIngestion():
 									'speed':line[1], 
 									'travelTime':line[2], 
 									'status':	line[3], 
-									'dataAsOf':dt.strptime(line[4], "%m/%d/%Y %H:%M:%S"), 
+									'dataAsOf': localtz.localize(dt.strptime(line[4], "%m/%d/%Y %H:%M:%S")),#dt.strptime(line[4], "%m/%d/%Y %H:%M:%S"), 
 									'linkId': line[5] 
 									# 'owner':line[9] 
 									# 'linkPoints':line[6], 

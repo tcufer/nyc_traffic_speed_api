@@ -1,10 +1,11 @@
 import requests, csv, pymongo, sys, json, logging
+import datetime
 from flask import jsonify, abort
 from bson import json_util
 from common import send_email
 from flask.ext.restful import Resource
 from nyc_traffic_speed_api import api, db_conn
-
+from . import Eastern
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger('nyc_traffic_speed')
@@ -37,11 +38,13 @@ class TrafficSpeedResource(Resource):
 			return "Unexpected error: ", e	
 			# return status code
 		# speed_sensor = [sensor for sensor in doc]
+		EST = Eastern()
 		speed_sensor = []
 		for sensor in doc:
 			try:
 				l = links.find({"linkId": sensor["linkId"]}, {"linkName"})	
 				sensor["linkName"] = l[0]["linkName"]
+				sensor['dataAsOf'] = sensor['dataAsOf'].astimezone(EST).strftime('%Y-%m-%d %H:%M:%S %Z')
 				speed_sensor.append(sensor)
 			except pymongo.errors, e:
 				return "Unexpected error: ", e
@@ -62,16 +65,16 @@ class TrafficSpeedListResource(Resource):
 		links = db_conn.links
 
 		try:
-			pipeline = [ {"$sort": { "dataAsOf": -1 }},
-				{"$group": { "_id": "$sensorId", 
-				        "dataAsOf": {"$first": "$dataAsOf"},
-				        "speed": {"$first": "$speed" },
-				        "travelTime":{"$first":"$travelTime"},
-				        "linkId": {"$first": "$linkId"}
-				        # "borough": {"$first": "$borough"}
-				    }}
-				]
-			documents = sensors.aggregate( pipeline, allowDiskUse = True)
+			documents = sensors.aggregate( [{"$sort": { "dataAsOf": -1 }},
+											{"$group": { "_id": "$sensorId", 
+											        "dataAsOf": {"$first": "$dataAsOf"},
+											        "speed": {"$first": "$speed" },
+											        "travelTime":{"$first":"$travelTime"},
+											        "linkId": {"$first": "$linkId"}
+											        # "borough": {"$first": "$borough"}
+										    		}
+								    		}
+											], allowDiskUse = True)
 		except pymongo.errors, e:
 			print "Unexpected error: ", e	
 
@@ -84,8 +87,12 @@ class TrafficSpeedListResource(Resource):
 		# for name in linkNames:
 		# 	link_names[name["linkId"]] = name["linkName"]
 		# 	# print "1" 
-
-		speed_sensors_list = [point for point in documents['result']]
+		EST = Eastern()
+		speed_sensors_list = []
+		for point in documents['result']:
+			point['dataAsOf'] = point['dataAsOf'].astimezone(EST).strftime('%Y-%m-%d %H:%M:%S %Z')
+			speed_sensors_list.append(point)	
+		# speed_sensors_list = [point for point in documents['result']]
 		
 		# for point in documents['result']:
 		# 	speed_sensors_list
@@ -94,4 +101,5 @@ class TrafficSpeedListResource(Resource):
 			abort(404)
 		
 		return jsonify({'speedSensors': speed_sensors_list})
+
 

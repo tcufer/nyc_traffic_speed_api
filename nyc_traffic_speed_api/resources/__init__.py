@@ -1,4 +1,4 @@
-import requests, csv, pymongo, sys, json, logging
+import requests, csv, pymongo, sys, json, logging, datetime
 from flask import jsonify, abort, Response
 from bson import json_util
 from common import send_email
@@ -24,5 +24,16 @@ def output_html(data, code, headers=None):
 class ResourceList(Resource):
 
 	def get(self):
-		resources_html = "<html><body><h1>Resource list: </h1><ul><li><a href='/linkData/'>Traffic links</a></li><li><a href='/speedData/'>Traffic speed</a></li></ul></body></html>"
+		resources_html = "<html><body><h1>Resource list: </h1><ul><li><a href='/trafficLink'>Traffic links</a></li><li><a href='/trafficSpeed'>Traffic speed</a></li></ul></body></html>"
 		return output_html(resources_html, 200)
+
+class Eastern(datetime.tzinfo):
+
+    def utcoffset(self, dt):
+        return datetime.timedelta(hours=-5)
+
+    def tzname(self, dt): 
+        return "EST"
+
+    def dst(self, dt):
+        return datetime.timedelta(0)
