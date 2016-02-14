@@ -1,8 +1,8 @@
 import unittest
 from werkzeug.exceptions import BadRequest
 from .test_client import TestClient
-from resources import app
 from models import db, User
+from resources import app
 from datetime import datetime as dt
 
 # from api.errors import ValidationError
@@ -13,6 +13,7 @@ class TestAPI(unittest.TestCase):
 
     def setUp(self):
         self.app = app
+        self.app.config['TESTING'] = True
         self.ctx = self.app.app_context()
         self.ctx.push()
         # db.drop_all()

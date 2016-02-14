@@ -7,7 +7,6 @@ data_sample
 *.log
 secret.json
 traffic.json
-API_procedure_guideline.txt
-v1.0_requirements.txt
-send_email.py
-common
+.idea
+.coverage
+errors.py

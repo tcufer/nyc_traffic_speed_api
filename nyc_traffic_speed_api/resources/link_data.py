@@ -1,73 +1,58 @@
-import requests, csv, pymongo, sys, json, logging
+import requests, csv
 from flask import jsonify, abort
-from bson import json_util
-from common import send_email
 from flask.ext.restful import Resource
-from nyc_traffic_speed_api import api, db_conn
+from . import api
+from models import Link
 
 
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger('nyc_traffic_speed')
-hdlr = logging.FileHandler('nyc_traffic_speed.log')
-formatter = logging.Formatter('%(asctime)s %(levelname)s %(message)s')
-hdlr.setFormatter(formatter)
-logger.addHandler(hdlr) 
-# logger.setLevel(logging.WARNING)
-
-
-@api.route('/trafficLink/<int:id>')	
 class TrafficLinkResource(Resource):
 
 	def get(self, id):
 
-		links = db_conn.links
-
-		try:
-			doc = links.find({"linkId": str(id)}, { "_id":False, 
-														"linkId": True, 
-														"linkName": True, 
-														"borough": True, 
-														"owner": True, 
-														"linkPoints": True, 
-														"encodedPolyLine": True, 
-														"encodedPolyLineLvls": True}).sort("dataAsOf", -1).limit(1)
-		
-		except pymongo.errors, e:
-			print "Unexpected error: ", e
+		req_fields = ['linkId','linkName', 'borough', 'owner', 'linkPoints', 'encodedPolyLine', 'encodedPolyLineLvls']
+		link = Link.objects(linkId = str(id)).only(*req_fields)
+		if len(link) == 0:
+			abort(404)	
+		return jsonify({'Link': link})
 
 
-		link_data = [link for link in doc]
-		if len(link_data) == 0:
-			abort(404)
-		return jsonify({'trafficLink': link_data})
 
-
-@api.route('/trafficLink')
 class TrafficLinkListResource(Resource):
 
 	def get(self):	
-
-		links = db_conn.links
-
-		try:
-			documents = links.aggregate([
-			    								# {"$sort": { "dataAsOf": -1 }},
-			    								{"$group": { "_id": "$linkId", 
-												        "linkId": {"$first": "$linkId"},
-												        "linkName": {"$first": "$linkName" },
-												        "borough":{"$first":"$borough"},
-												        "owner": {"$first": "$owner"},
-												        "linkPoints": {"$first": "$linkPoints"},
-												        "encodedPolyLine": {"$first": "$encodedPolyLine"},
-												        "encodedPolyLineLvls": {"$first": "$encodedPolyLineLvls"}
-												    }}
-												])
-		except pymongo.errors, e:
-			print "Unexpected error: ", e	
-
-
-		links_list = [link for link in documents['result']]
-		if len(links_list) == 0:
+		
+		req_fields = ['linkId', 'linkName', 'borough', 'owner', 'linkPoints', 'encodedPolyLine', 'encodedPolyLineLvls']
+		links = Link.objects().only(*req_fields)
+		if len(links) == 0:
 			abort(404)
 		
-		return jsonify({'trafficLinkList': links_list})
+		return jsonify({'trafficLinkList': links})
+
+
+	# def post(self):
+    #
+	# 	# Read data from the website
+	# 	try:
+	# 		response = requests.get("http://207.251.86.229/nyc-links-cams/LinkSpeedQuery.txt")
+	# 	except Exception as e:
+	# 		abort(500)
+    #
+	# 	# Split to lines
+	# 	trafficData = (response.text).split('\n')
+	# 	# skip first line (headers) and last line (empty); read lines
+	# 	# "Id"	"Speed"	"TravelTime"	"Status"	"DataAsOf"	"linkId"	"linkPoints"	"EncodedPolyLine"	"EncodedPolyLineLvls"	"Owner"	"Transcom_id"	"Borough"	"linkName"
+	# 	for line in csv.reader(trafficData[1:-1], delimiter="\t"):
+	# 		link = Link(linkId = line[5],
+	# 						linkPoints = line[6],
+	# 						encodedPolyLine = line[7],
+	# 						encodedPolyLineLvls = line[8],
+	# 						owner = line[9],
+	# 						borough =  line[11],
+	# 						linkName = line[12])
+	# 		link.save()
+	#
+	# 	return {}, 201
+
+
+api.add_resource(TrafficLinkResource, '/trafficLink/<int:id>')
+api.add_resource(TrafficLinkListResource, '/trafficLink/')

@@ -1,11 +1,20 @@
 #!/usr/bin/env python
-from flask import Flask, g, jsonify
 from flask.ext.script import Manager
 from models import db, User
+from apscheduler.scheduler import Scheduler
 
 from resources import app
+from common import data_ingestion
+
 manager = Manager(app)
 
+@app.before_first_request
+def init_scheduler():
+    data_ingestion.insert_traffic_data()
+    apsched = Scheduler()
+    apsched.start()
+    # Retrieve traffic data every 5 min
+    apsched.add_interval_job(lambda: data_ingestion.insert_traffic_data(), seconds=300)
 
 
 @manager.command
@@ -29,17 +38,17 @@ def adduser(username):
     user = User(username=username)
     user.set_password(password)
     user.save()
-    # db.session.add(user)
-    # db.session.commit()
     print('User {0} was registered successfully.'.format(username))
 
 
-# @manager.command
-# def test():
-#     from subprocess import call
-#     call(['nosetests', '-v',
-#           '--with-coverage', '--cover-package=api', '--cover-branches',
-#           '--cover-erase', '--cover-html', '--cover-html-dir=cover'])
+@manager.command
+def test():
+    from subprocess import call
+    call(['nosetests', '-v',
+          '--with-coverage',
+      '--cover-package=nyc_traffic_speed_api', '--cover-package=resources', '--cover-package=common' ])
+    # '--cover-branches',
+    #       '--cover-erase', '--cover-html', '--cover-html-dir=cover'])
 
 
 if __name__ == '__main__':

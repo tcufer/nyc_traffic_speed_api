@@ -1,157 +1,154 @@
-import requests, csv, pymongo, sys, json, logging, re, pytz
+import requests, csv, pymongo, sys, json, re, pytz
+from datetime import datetime as dt
 import datetime
 from flask import jsonify, abort
-from bson import json_util
-from common import send_email
 from flask.ext.restful import Resource
-from nyc_traffic_speed_api import api, db_conn, not_found_error
-from . import Eastern
+from models import Sensor
+from helper import Eastern
+from . import api
+# timezone
+EST = Eastern()
 
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger('nyc_traffic_speed')
-hdlr = logging.FileHandler('nyc_traffic_speed.log')
-formatter = logging.Formatter('%(asctime)s %(levelname)s %(message)s')
-hdlr.setFormatter(formatter)
-logger.addHandler(hdlr) 
-# logger.setLevel(logging.WARNING)
-
-@api.route('/trafficSpeed/<int:id>')
 class TrafficSpeedResource(Resource):
 
-	def get(self, id):
 
-		sensors = db_conn.sensors
-		links = db_conn.links
-		
-		try:
-			doc = sensors.find({"sensorId": str(id)}, { 	"_id": False,
-															'sensorId': True,
-														   	"dataAsOf": True,
-														   	"speed": True,
-														   	"travelTime": True,
-														   	"linkId": True
-														   	}).sort("dataAsOf", -1).limit(1)
-		
-		except pymongo.errors, e:
-			return "Unexpected error: ", e	
+    def get(self, id):
 
-		EST = Eastern()
-		speed_sensor = []
-		for sensor in doc:
-			try:
-				l = links.find({"linkId": sensor["linkId"]}, {"linkName"})	
-				sensor["linkName"] = l[0]["linkName"]
-				sensor['dataAsOf'] = sensor['dataAsOf'].astimezone(EST).strftime('%Y-%m-%d %H:%M:%S %Z')
-				speed_sensor.append(sensor)
-			except pymongo.errors, e:
-				return "Unexpected error: ", e
-
-		if len(speed_sensor) == 0:
-			abort(404)
-		return jsonify({'speedSensor': speed_sensor})
+        req_fields = ['dataAsOf','sensorId', 'speed', 'travelTime', 'linkId']
+        # sensor = Sensor.objects(sensorId = str(id)).order_by('-dataAsOf').limit(1).only(*req_fields)
+        sensor = Sensor._get_collection().find({"sensorId" : str(id) },
+                                               {"_id": 0, "dataAsOf":1, "sensorId": 1, "speed": 1, "travelTime": 1, "linkId": 1})\
+                                        .sort("dataAsOf", -1)\
+                                        .limit(1)
+        sensor_list = []
+        for s in sensor:
+                s['dataAsOf'] = (s['dataAsOf'].replace(tzinfo=pytz.UTC)).astimezone(EST).strftime('%Y-%m-%d %H:%M:%S %Z')
+                sensor_list.append(s)
 
 
-@api.route('/trafficSpeed/<int:id>/<string:date>')
+        if len(sensor_list) == 0:
+            abort(404)
+
+        return jsonify({'speedSensor': sensor_list})
+
+
 class TrafficSpeedByDateResource(Resource):
 
-	def get(self, id, date):
+    def get(self, id, date):
 
-		if date is None:
-			return jsonify({'test': "date parameter missing"})
-		if not re.search("^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[1-2][0-9]|3[0-1])$",  date):
-			abort(404)
+        if not re.search("^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[1-2][0-9]|3[0-1])$",  date):
+            abort(404)
+        else:
+            localtz = pytz.timezone('America/New_York')
+            date = localtz.localize(dt.strptime(date, "%Y-%m-%d"))
+            end_date = date + datetime.timedelta(days=1)
 
-		else:
+            try:
+                # sensors = Sensor.objects(sensorId = str(id), dataAsOf = )
+                doc = Sensor._get_collection().aggregate(
+                        [
+                            {
+                                "$match": { "sensorId" : str(id),
+                                            "dataAsOf": { "$gte": date,
+                                                          "$lt": end_date}  }
+                            },
+                            {
+                                "$group":
+                                    {
+                                        "_id": {"sensorId": "$sensorId",
+                                                "linkId": "$linkId"},
+                                        "measures": { "$push": {"timestamp": "$dataAsOf",
+                                                                "speed": "$speed",
+                                                                "travelTime": "$travelTime"}}
 
-			sensors = db_conn.sensors
-			links = db_conn.links
-			localtz = pytz.timezone('America/New_York')
-			date = localtz.localize(datetime.datetime.strptime(date, "%Y-%m-%d"))
-			end_date = date + datetime.timedelta(days=1)
-
-			try:
-
-				doc = sensors.aggregate(
-						[
-							{ 
-								"$match": { "sensorId" : str(id), "dataAsOf": {"$gte": date, "$lt": end_date}  }
-							},
-							{
-								"$group":
-									{
-										"_id": {"sensorId": "$sensorId", "linkId": "$linkId"},
-										"measures": { "$push": {"timestamp": "$dataAsOf", "speed": "$speed", "travelTime": "$travelTime"}}
-
-									}
-							},
-							{
-								"$project":
-									{
-										"_id": 0,
-										"sensorId": "$_id.sensorId",
-										"linkId" : "$_id.linkId",
-										"measures": 1
-									}
-							}
-						]
-					)
+                                    }
+                            },
+                            {
+                                "$project":
+                                    {
+                                        "_id": 0,
+                                        "sensorId": "$_id.sensorId",
+                                        "linkId" : "$_id.linkId",
+                                        "measures": 1
+                                    }
+                            }
+                        ]
+                    )
 
 
-			except pymongo.errors, e:
-				return "Unexpected error: ", e	
+            except pymongo.errors, e:
+                return "Unexpected error: ", e
 
-			EST = Eastern()
-			speed_sensor = []
-			for sensor in doc['result']:
-				try:
-					l = links.find({"linkId": sensor["linkId"]}, {"linkName"})	
-					sensor["linkName"] = l[0]["linkName"]
-					measures = sensor['measures']
-					sensor['measures'] = []
-					for m in measures:
-						sensor['measures'].append({ 'timestamp': m['timestamp'].astimezone(EST).strftime('%Y-%m-%d %H:%M:%S %Z'),
-													'speed': m['speed'],
-													'travelTime': m['travelTime'] 
-												 })
-					speed_sensor.append(sensor)
-				except pymongo.errors, e:
-					return "Unexpected error: ", e
-			if len(speed_sensor) == 0:
-				print "jazbec"
-				abort(404)
-			return jsonify({'speedSensor': speed_sensor})
+            speed_sensor = []
+            for sensor in doc['result']:
+                try:
+                    measures = sensor['measures']
+                    sensor['measures'] = []
+                    for m in measures:
+                        sensor['measures'].append({ 'timestamp': (m['timestamp'].replace(tzinfo=pytz.UTC)).astimezone(EST).strftime('%Y-%m-%d %H:%M:%S %Z'),
+                                                    'speed': m['speed'],
+                                                    'travelTime': m['travelTime']
+                                                 })
+                    speed_sensor.append(sensor)
+                except pymongo.errors, e:
+                    return "Unexpected error: ", e
+            if len(speed_sensor) == 0:
+                abort(404)
+            return jsonify({'speedSensor': speed_sensor})
 
-@api.route('/trafficSpeed')	
+
 class TrafficSpeedListResource(Resource):
 
-	def get(self):
-
-		sensors = db_conn.sensors
-		links = db_conn.links
-
-		try:
-			documents = sensors.aggregate( [{"$sort": { "dataAsOf": -1 }},
-											{"$group": { "_id": "$sensorId", 
-											        "dataAsOf": {"$first": "$dataAsOf"},
-											        "speed": {"$first": "$speed" },
-											        "travelTime":{"$first":"$travelTime"},
-											        "linkId": {"$first": "$linkId"}
-											        # "borough": {"$first": "$borough"}
-										    		}
-								    		}
-											], allowDiskUse = True)
-		except pymongo.errors, e:
-			print "Unexpected error: ", e	
-
-		EST = Eastern()
-		speed_sensors_list = []
-		for point in documents['result']:
-			point['dataAsOf'] = point['dataAsOf'].astimezone(EST).strftime('%Y-%m-%d %H:%M:%S %Z')
-			speed_sensors_list.append(point)	
-
-		if len(speed_sensors_list) == 0:
-			abort(404)
-		
-		return jsonify({'speedSensors': speed_sensors_list})
+    def get(self):
 
 
+        documents = Sensor._get_collection().aggregate( [{"$sort": { "dataAsOf": -1 }},
+            {"$group": { "_id": "$sensorId",
+            "dataAsOf": {"$first": "$dataAsOf"},
+            "speed": {"$first": "$speed" },
+            "travelTime":{"$first":"$travelTime"},
+            "linkId": {"$first": "$linkId"}
+            }
+            }
+            ], allowDiskUse = True)
+        speed_sensors_list = []
+        for point in documents['result']:
+            point['dataAsOf'] = (point['dataAsOf'].replace(tzinfo=pytz.UTC)).astimezone(EST).strftime('%Y-%m-%d %H:%M:%S %Z')
+            speed_sensors_list.append(point)
+
+
+        if len(speed_sensors_list) == 0:
+            abort(404)
+
+        return jsonify({'speedSensor': speed_sensors_list})
+
+    #
+    # def post(self):
+    #
+    # 	localtz = pytz.timezone('America/New_York')
+    # 	# Read data from the website
+    # 	try:
+    # 		response = requests.get("http://207.251.86.229/nyc-links-cams/LinkSpeedQuery.txt")
+    # 	except Exception as e:
+    # 		abort(500)
+    #
+    # 	# Split to lines
+    # 	trafficData = (response.text).split('\n')
+    # 	# skip first line (headers) and last line (empty); read lines
+    # 	# "Id"	"Speed"	"TravelTime"	"Status"	"DataAsOf"	"linkId"	"linkPoints"	"EncodedPolyLine"	"EncodedPolyLineLvls"	"Owner"	"Transcom_id"	"Borough"	"linkName"
+    # 	for line in csv.reader(trafficData[1:-1], delimiter="\t"):
+    # 		sensor = Sensor(sensorId = line[0],
+    # 						speed = line[1],
+    # 						travelTime = line[2],
+    # 						status = line[3],
+    # 						dataAsOf = localtz.localize(dt.strptime(line[4], "%m/%d/%Y %H:%M:%S")),
+    # 						linkId = line[5])
+    # 		sensor.save()
+    #
+    # 	return {}, 201
+
+
+
+api.add_resource(TrafficSpeedListResource, '/trafficSpeed')
+api.add_resource(TrafficSpeedResource, '/trafficSpeed/<int:id>')
+api.add_resource(TrafficSpeedByDateResource, '/trafficSpeed/<int:id>/<string:date>')
