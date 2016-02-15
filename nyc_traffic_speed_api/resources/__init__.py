@@ -9,11 +9,12 @@ import datetime
 app = Flask(__name__)
 app.config.from_object(os.environ.get('FLASK_CONFIG') or
                        'config')
-app.debug = True
+app.debug = False
 api = Api(app)
 db.init_app(app)
-limiter = Limiter(app, global_limits=["10 per minute"],  key_func = lambda : request.remote_addr)
-limiter = Limiter(app)
+if app.config['USE_RATE_LIMITS']:
+    limiter = Limiter(app, global_limits=["10 per minute"],  key_func = lambda : request.remote_addr)
+    limiter = Limiter(app)
 
 # class ResourceList(Resource):
 #

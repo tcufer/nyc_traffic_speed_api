@@ -1,4 +1,4 @@
-import requests, csv, pymongo, sys, json, re, pytz
+import requests, csv, sys, json, re, pytz
 from datetime import datetime as dt
 import datetime
 from flask import jsonify, abort
@@ -43,55 +43,51 @@ class TrafficSpeedByDateResource(Resource):
             date = localtz.localize(dt.strptime(date, "%Y-%m-%d"))
             end_date = date + datetime.timedelta(days=1)
 
-            try:
-                # sensors = Sensor.objects(sensorId = str(id), dataAsOf = )
-                doc = Sensor._get_collection().aggregate(
-                        [
-                            {
-                                "$match": { "sensorId" : str(id),
-                                            "dataAsOf": { "$gte": date,
-                                                          "$lt": end_date}  }
-                            },
-                            {
-                                "$group":
-                                    {
-                                        "_id": {"sensorId": "$sensorId",
-                                                "linkId": "$linkId"},
-                                        "measures": { "$push": {"timestamp": "$dataAsOf",
-                                                                "speed": "$speed",
-                                                                "travelTime": "$travelTime"}}
 
-                                    }
-                            },
-                            {
-                                "$project":
-                                    {
-                                        "_id": 0,
-                                        "sensorId": "$_id.sensorId",
-                                        "linkId" : "$_id.linkId",
-                                        "measures": 1
-                                    }
-                            }
-                        ]
-                    )
+            # sensors = Sensor.objects(sensorId = str(id), dataAsOf = )
+            doc = Sensor._get_collection().aggregate(
+                    [
+                        {
+                            "$match": { "sensorId" : str(id),
+                                        "dataAsOf": { "$gte": date,
+                                                      "$lt": end_date}  }
+                        },
+                        {
+                            "$group":
+                                {
+                                    "_id": {"sensorId": "$sensorId",
+                                            "linkId": "$linkId"},
+                                    "measures": { "$push": {"timestamp": "$dataAsOf",
+                                                            "speed": "$speed",
+                                                            "travelTime": "$travelTime"}}
+
+                                }
+                        },
+                        {
+                            "$project":
+                                {
+                                    "_id": 0,
+                                    "sensorId": "$_id.sensorId",
+                                    "linkId" : "$_id.linkId",
+                                    "measures": 1
+                                }
+                        }
+                    ]
+                )
 
 
-            except pymongo.errors, e:
-                return "Unexpected error: ", e
 
             speed_sensor = []
             for sensor in doc['result']:
-                try:
-                    measures = sensor['measures']
-                    sensor['measures'] = []
-                    for m in measures:
-                        sensor['measures'].append({ 'timestamp': (m['timestamp'].replace(tzinfo=pytz.UTC)).astimezone(EST).strftime('%Y-%m-%d %H:%M:%S %Z'),
-                                                    'speed': m['speed'],
-                                                    'travelTime': m['travelTime']
-                                                 })
-                    speed_sensor.append(sensor)
-                except pymongo.errors, e:
-                    return "Unexpected error: ", e
+
+                measures = sensor['measures']
+                sensor['measures'] = []
+                for m in measures:
+                    sensor['measures'].append({ 'timestamp': (m['timestamp'].replace(tzinfo=pytz.UTC)).astimezone(EST).strftime('%Y-%m-%d %H:%M:%S %Z'),
+                                                'speed': m['speed'],
+                                                'travelTime': m['travelTime']
+                                             })
+                speed_sensor.append(sensor)
             if len(speed_sensor) == 0:
                 abort(404)
             return jsonify({'speedSensor': speed_sensor})

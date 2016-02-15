@@ -18,14 +18,6 @@ def init_scheduler():
 
 
 @manager.command
-def createdb():
-    app = create_app()
-    with app.app_context():
-        db.drop_all()
-        db.create_all()
-
-
-@manager.command
 def adduser(username):
     """Register a new user."""
     from getpass import getpass
@@ -41,14 +33,12 @@ def adduser(username):
     print('User {0} was registered successfully.'.format(username))
 
 
-@manager.command
-def test():
-    from subprocess import call
-    call(['nosetests', '-v',
-          '--with-coverage',
-      '--cover-package=nyc_traffic_speed_api', '--cover-package=resources', '--cover-package=common' ])
-    # '--cover-branches',
-    #       '--cover-erase', '--cover-html', '--cover-html-dir=cover'])
+# @manager.command
+# def test():
+#     from subprocess import call
+#     call(['nosetests', '-v',
+#           '--with-coverage',
+#       '--cover-package=nyc_traffic_speed_api', '--cover-package=resources', '--cover-package=common' ])
 
 
 if __name__ == '__main__':

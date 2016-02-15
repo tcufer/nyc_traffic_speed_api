@@ -16,14 +16,9 @@ class TestAPI(unittest.TestCase):
         self.app.config['TESTING'] = True
         self.ctx = self.app.app_context()
         self.ctx.push()
-        # db.drop_all()
-        # db.create_all()
         u = User(username=self.default_username)
         u.set_password(self.default_password)
-        # db.session.add(u)
-        # db.session.commit()
         u.save()
-            # ('test_nyc_traffic_speed')
         self.client = TestClient(self.app, self.default_username, self.default_password)
 
     def tearDown(self):
