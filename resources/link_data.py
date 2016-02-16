@@ -1,8 +1,8 @@
-import requests, csv
-from flask import jsonify, abort
 from flask.ext.restful import Resource
+
+from common.models import Link
+from flask import jsonify, abort
 from . import api
-from models import Link
 
 
 class TrafficLinkResource(Resource):

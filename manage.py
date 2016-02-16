@@ -1,10 +1,10 @@
 #!/usr/bin/env python
 from flask.ext.script import Manager
-from models import db, User
-from apscheduler.scheduler import Scheduler
 
-from resources import app
+from apscheduler.scheduler import Scheduler
 from common import data_ingestion
+from common.models import User
+from resources import app
 
 manager = Manager(app)
 
@@ -26,19 +26,19 @@ def adduser(username):
     if password != password2:
         import sys
         sys.exit('Error: passwords do not match.')
-    # db.create_all()
     user = User(username=username)
     user.set_password(password)
     user.save()
     print('User {0} was registered successfully.'.format(username))
 
 
-# @manager.command
-# def test():
-#     from subprocess import call
-#     call(['nosetests', '-v',
-#           '--with-coverage',
-#       '--cover-package=nyc_traffic_speed_api', '--cover-package=resources', '--cover-package=common' ])
+@manager.command
+def test():
+    from subprocess import call
+    call(['nosetests', '-v',
+          '--with-coverage',
+          '--cover-package=resources',
+          '--cover-package=common' ])
 
 
 if __name__ == '__main__':

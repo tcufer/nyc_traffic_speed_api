@@ -1,9 +1,10 @@
 import unittest
-from werkzeug.exceptions import BadRequest
-from .test_client import TestClient
-from models import db, User
-from resources import app
 from datetime import datetime as dt
+
+from common.models import User
+from resources import app
+from .test_client import TestClient
+
 
 # from api.errors import ValidationError
 
@@ -60,6 +61,12 @@ class TestAPI(unittest.TestCase):
         rv, json = self.client.get('/trafficLink/123456789')
         self.assertTrue(rv.status_code == 404)
 
+        #no link data
+        from common.models import Link
+        Link.drop_collection()
+        rv, json = self.client.get('/trafficLink/')
+        self.assertTrue(rv.status_code == 404)
+
     def test_speed(self):
         # get data of all speed sensors
         rv, json = self.client.get('/trafficSpeed')
@@ -96,3 +103,10 @@ class TestAPI(unittest.TestCase):
         self.assertTrue(rv.status_code == 404)
         rv, json = self.client.get('/trafficSpeed/137/a30')
         self.assertTrue(rv.status_code == 404)
+
+        #no sensor data
+        from common.models import Sensor
+        Sensor.drop_collection()
+        rv, json = self.client.get('/trafficSpeed')
+        self.assertTrue(rv.status_code == 404)
+

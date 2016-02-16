@@ -12,3 +12,4 @@ MAIL_USERNAME = None
 MAIL_PASSWORD = None
 # administrator list
 ADMINS = ['example@example.com']
+NYC_LINK_SPEED_URL = "http://207.251.86.229/nyc-links-cams/LinkSpeedQuery.txt"

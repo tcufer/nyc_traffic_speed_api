@@ -1,20 +1,24 @@
-import requests, csv, pytz
-from flask import abort
 from datetime import datetime as dt
-from models import Sensor, Link
+
+import csv
+import pytz
+import requests
+from common.models import Sensor, Link
+from flask import abort
 from resources import app
+
 
 def insert_traffic_data():
 
     localtz = pytz.timezone('America/New_York')
     # Read data from the website
     try:
-        response = requests.get("http://207.251.86.229/nyc-links-cams/LinkSpeedQuery.txt")
+        response = requests.get(app.config['NYC_LINK_SPEED_URL'])
     except Exception as e:
         if not app.debug:
             import logger
             logger.logger_message("Retrieving data failed.")
-        abort(500)
+        return 500
 
     # Split to lines
     trafficData = (response.text).split('\n')

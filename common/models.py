@@ -50,9 +50,9 @@ class User(db.Document):
 	def verify_password(self, password):
 		return check_password_hash(self.password_hash, password)
 
-	def generate_auth_token(self, expires_in=3600):
-		s = Serializer(current_app.config['SECRET_KEY'], expires_in=expires_in)
-		return s.dumps({'id': 123}).decode('utf-8')
+	# def generate_auth_token(self, expires_in=3600):
+	# 	s = Serializer(current_app.config['SECRET_KEY'], expires_in=expires_in)
+	# 	return s.dumps({'id': 123}).decode('utf-8')
 
 	# @staticmethod
 	# def verify_auth_token(token):

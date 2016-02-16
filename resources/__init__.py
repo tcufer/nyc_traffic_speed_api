@@ -1,15 +1,14 @@
+from flask.ext.restful import Api
+
 import os
-from flask import Flask, abort, Response, request
-from flask.ext.restful import Resource, Api
+from common.auth import auth
+from common.models import db
+from flask import Flask, request
 from flask_limiter import Limiter
 
-from auth import auth
-from models import db
-import datetime
 app = Flask(__name__)
 app.config.from_object(os.environ.get('FLASK_CONFIG') or
                        'config')
-app.debug = False
 api = Api(app)
 db.init_app(app)
 if app.config['USE_RATE_LIMITS']:
