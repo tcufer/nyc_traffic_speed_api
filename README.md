@@ -1,5 +1,7 @@
 # NYC Traffic Speed API
 
+[![Build Status](https://travis-ci.org/tcufer/nyc_traffic_speed_api.svg?branch=master)](https://travis-ci.org/tcufer/nyc_traffic_speed_api)
+
 Capture Real-time NYC Traffic Speed Data and make it available through API.  
 
 ## Description
@@ -30,7 +32,7 @@ More: [NYC Open Data, Real-Time Traffic Speed Data](https://data.cityofnewyork.u
     $ source venv/bin/activate
     (venv)$ pip install -r requirements.txt
 
-*** Unit Tests
+### Unit Tests
 
 To check your installation was successful you can run the unit tests:
 
