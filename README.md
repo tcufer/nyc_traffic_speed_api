@@ -62,22 +62,107 @@ To check your installation was successful you can run the unit tests:
     OK
 
 The report above presents a summary of the test coverage.
-## Examples
 
-    http://localhost:5000/trafficSpeed
+## User Registration
+
+The API is using user authentication, therefore a new user has to be registered. Multiple users can be registered (with different usernames) as they are stored in a database.
+
+    (venv) $ python manage.py adduser <username>
+    Password: <password>
+    Confirm: <password>
+    User <username> was registered successfully.
+
+## API Resources
+The API contains two top-level resources, available on these urls:
+
+- `/trafficSpeed`: The list of speed sensors with the current state
+    * with sub-level resources:
+        - `/trafficSpeed/<int:sensorId>/`: Current state of the sensor with requested Id
+        - `/trafficSpeed/<int:sensorId>/[YYYY-MM-DD]`: All collected data for this sensor on a requested date
+- `/trafficLink`: The list of traffic links and additional data about sensors 
+    * with sub-level resource:
+        - `/trafficlink/<int:id>`: All data about the traffic link with requested id
+
+API supports resource representations in JSON format only.
+
+## Traffic Speed Resource
+
+The resource has the following structure:
+
+    {
+      "speedSensor": [
+        {
+          "dataAsOf": [timestamp (EST timezone)], 
+          "linkId": [traffic link id], 
+          "sensorId": [sensor id], 
+          "speed": [traffic speed (mph)], 
+          "travelTime": [needed time to travel thorugh the traffic link (sec)]
+        },
+        {
+        ...
+        }
+      ]
+    }
+
+Resource with requested sensor id returns data only for one sensor in a described structure above.
+
+Resource with requested sensor id and date has the following structure:
     
-    http://localhost:5000/trafficSpeed/<int:id>
+    {
+      "speedSensor": [
+        {
+          "linkId": [traffic link id], 
+          "measures": [
+            {
+              "timestamp": [timestamp_1], 
+              "speed": [traffic speed (mph)], 
+              "travelTime": [needed time to travel thorugh the traffic link (sec)]
+            },
+            {
+              "timestamp": [timestamp_2],
+              ...
+            }, 
+            ...
+        }
+        ]
+    }
     
-    http://localhost:5000/trafficSpeed/<int:id>/YYYY-MM-DD
+## Traffic Link Resource
+
+The resource has the following structure:
+
+    {
+      "trafficLinkList": [
+        {
+          "borough": [Borough where link is located], 
+          "encodedPolyLine": [Encoded set of latitude/longitude pairs], 
+          "encodedPolyLineLvls": [Encoded polyyine levels], 
+          "linkId": [traffic link id], 
+          "linkName": [Name of the link, usually describes with the name of the street/road], 
+          "linkPoints": [latitude/longitude pairs describing the road link], 
+          "owner": [Link's owner]
+        }, 
+        {
+        ...},
+        ...
+    }
     
-    http://localhost:5000/trafficLink
+Resource with requested link id returns data only for one link in a described structure above.
+
+## Rate Limiting
+
+Rate limiting is an optional feature of the API, however is highly recommended to enable it to prevent the abuse of the api if it's deployed to production.
+To enable rate limiting change the following line in config.py:
     
-    http://localhost:5000/trafficLink/<int:id>
+    USE_RATE_LIMITS = True
+    
+The default configuration limits clients to 10 API calls per 1 minute interval. When a client goes over the limit a response with the 429 status code is returned immediately, without carrying out the request. The limit resets every minute.
 
 
 ## TODOs
-Doing it one step at a time :) I appreciate pull requests and any suggestions!
+This project is still work in progress :) I appreciate pull requests and any suggestions!
 
 * Pagination
 * HTTP Caching
 * Token Authentication
+* Improvements on existing features
